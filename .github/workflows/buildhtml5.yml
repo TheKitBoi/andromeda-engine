@@ -57,7 +57,7 @@ jobs:
       - name: Create APIStuff
         run: echo "package;class APIStuff{public static var API:String = '';public static var EncKey:String = '';}" > source/APIStuff.hx
       - name: Compile
-        run: haxelib run lime build html5
+        run: haxelib run lime build html5 -debug
       - name: Publish Artifact
         uses: actions/upload-artifact@v2
         with:
