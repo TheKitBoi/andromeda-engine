@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Windows Build CI
+name: Windows Build CI 2
 
 # Controls when the workflow will run
 on: [push, pull_request]
@@ -45,6 +45,7 @@ jobs:
           haxelib run lime rebuild extension-webm windows
           haxelib git linc_luajit https://github.com/nebulazorua/linc_luajit.git
           haxelib git hxvm-luajit https://github.com/nebulazorua/hxvm-luajit
+          haxelib git flixel-addons https://github.com/HaxeFlixel/flixel-addons
           haxelib install actuate 
           haxelib run lime build windows
           
