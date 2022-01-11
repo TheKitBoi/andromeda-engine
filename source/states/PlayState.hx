@@ -277,6 +277,8 @@ class PlayState extends MusicBeatState
 			lua.setGlobalVar("curDecStep",0);
 			lua.setGlobalVar("songPosition",Conductor.songPosition);
 			lua.setGlobalVar("bpm",Conductor.bpm);
+			lua.setGlobalVar("crochet",Conductor.crochet);
+			lua.setGlobalVar("stepCrochet",Conductor.stepCrochet);
 			lua.setGlobalVar("XY","XY");
 			lua.setGlobalVar("X","X");
 			lua.setGlobalVar("Y","Y");
@@ -1086,12 +1088,11 @@ class PlayState extends MusicBeatState
 
 		inCutscene = false;
 
-		generateStaticArrows(0);
-		generateStaticArrows(1);
+		generateStaticArrows(0, 1);
+		generateStaticArrows(1, 0);
 
 		modManager = new ModManager(this);
 		modManager.registerModifiers();
-
 
 		if(!modManager.exists("reverse")){
 			var y = upscrollOffset;
@@ -1110,6 +1111,8 @@ class PlayState extends MusicBeatState
 		Conductor.rawSongPos = startPos;
 		Conductor.rawSongPos -= Conductor.crochet * 5;
 		Conductor.songPosition=Conductor.rawSongPos;
+		updateCurStep();
+		updateBeat();
 
 		if(startPos>0)canScore=false;
 
@@ -1120,7 +1123,11 @@ class PlayState extends MusicBeatState
 			setupLuaSystem();
 		#end
 
+
+
 		var swagCounter:Int = 0;
+
+
 
 		startTimer = new FlxTimer().start(Conductor.crochet / 1000, function(tmr:FlxTimer)
 		{
@@ -1499,7 +1506,7 @@ class PlayState extends MusicBeatState
 	// https://github.com/Quaver/Quaver
 	// ADAPTED FROM QUAVER!!!
 
-	private function generateStaticArrows(player:Int):Void
+	private function generateStaticArrows(player:Int, pN:Int):Void
 	{
 		for (i in 0...4)
 		{
@@ -1507,6 +1514,7 @@ class PlayState extends MusicBeatState
 			var clrs = ["purple","blue","green","red"];
 
 			var babyArrow:Receptor = new Receptor(0, center.y, i, currentOptions.noteSkin, noteModifier, Note.noteBehaviour);
+			babyArrow.playerNum = pN;
 			if(player==1)
 				noteSplashes.add(babyArrow.noteSplash);
 
@@ -1566,6 +1574,7 @@ class PlayState extends MusicBeatState
 			if (!isStoryMode)
 			{
 				babyArrow.desiredY -= 10;
+				babyArrow.y = babyArrow.desiredY;
 				babyArrow.alpha = 0;
 				FlxTween.tween(babyArrow,{desiredY: babyArrow.desiredY + 10, alpha:1}, 1, {ease: FlxEase.circOut, startDelay: 0.5 + (0.2 * i)});
 			}
@@ -1590,7 +1599,7 @@ class PlayState extends MusicBeatState
 		if(judgeMan.judgementCounter.get("miss")>0){
 			fcType='';
 		}else{
-			if(judgeMan.judgementCounter.get("bad")+judgeMan.judgementCounter.get("shit")>=noteCounter.get("taps")/2)
+			if(judgeMan.judgementCounter.get("bad")+judgeMan.judgementCounter.get("shit")>=noteCounter.get("taps")/2 && noteCounter.get("taps")>0)
 				fcType = ' (WTFC)';
 			else if(judgeMan.judgementCounter.get("bad")>0 || judgeMan.judgementCounter.get("shit")>0)
 				fcType += '(FC)';
@@ -1871,7 +1880,12 @@ class PlayState extends MusicBeatState
 		{
 			inst.pause();
 			vocals.pause();
-			FlxG.switchState(new ChartingState(charterPos==0?inst.time:charterPos));
+			if(currentOptions.oldCharter){
+				FlxG.switchState(new OldChartingState(charterPos==0?inst.time:charterPos));
+			}else{
+				FlxG.switchState(new ChartingState(charterPos==0?inst.time:charterPos));
+			}
+
 
 			#if desktop
 			DiscordClient.changePresence("Chart Editor", null, null, true);
@@ -2202,8 +2216,6 @@ class PlayState extends MusicBeatState
 					daNote.y = notePos.y;
 					daNote.scale.copyFrom(scale);
 					daNote.updateHitbox();
-					scale.put();
-					notePos.put();
 
 					var shitGotHit = (daNote.wasGoodHit || daNote.prevNote.wasGoodHit && !daNote.canBeHit);
 					var shit = strumLine.y + Note.swagWidth/2;
@@ -2226,7 +2238,25 @@ class PlayState extends MusicBeatState
 
 							daNote.clipRect=clipRect;
 						}
+
+					//	var nextPos = getPos(Conductor.songPosition - (daNote.strumTime + Conductor.stepCrochet), daNote.noteData, daNote.mustPress?1:0);
+
+						// TODO: rewrite modifier shit
+						var strumTime = daNote.strumTime;
+						daNote.strumTime+=Conductor.stepCrochet;
+						var nextPos = modManager.getNotePos(daNote);
+						daNote.strumTime=strumTime;
+						var curPos = notePos;
+
+						var diffX = (curPos.x - nextPos.x)*100;
+						var diffY = (curPos.y - nextPos.y)*100;
+						daNote.angle = ((Math.atan2(diffY, diffX)) * 180/Math.PI ); // gets the angle in degrees instead of radians
+						// idk if its better to use FlxAngle.tODegrees or do this
+						// i think its the same anyway lol
+
 					}
+					scale.put();
+					notePos.put();
 
 					if (daNote.y > FlxG.height)
 					{
@@ -3271,6 +3301,8 @@ class PlayState extends MusicBeatState
 				FlxG.log.add('CHANGED BPM!');
 				if(luaModchartExists && lua!=null){
 					lua.setGlobalVar("bpm",Conductor.bpm);
+					lua.setGlobalVar("crochet",Conductor.crochet);
+					lua.setGlobalVar("stepCrochet",Conductor.stepCrochet);
 				}
 			}
 			// else
