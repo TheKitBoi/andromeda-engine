@@ -17,11 +17,7 @@ import haxe.macro.Type;
 import lime.utils.Assets;
 import states.*;
 import Shaders;
-
-#if polymod
-import polymod.format.ParseRules.TargetSignatureElement;
-#end
-
+import flixel.group.FlxGroup.FlxTypedGroup;
 using StringTools;
 
 typedef SkinManifest = {
@@ -54,6 +50,7 @@ class Note extends NoteGraphic
 	public var manualXOffset:Float = 0;
 	public var manualYOffset:Float = 0;
 	public var mustPress:Bool = false;
+	public var shitId:Float = 0;
 	public var noteData:Int = 0;
 	public var canBeHit:Bool = false;
 	public var isSustainNote:Bool = false;
@@ -74,7 +71,7 @@ class Note extends NoteGraphic
 	public var beingCharted:Bool=false;
 	public var initialPos:Float = 0;
 	public var desiredZIndex:Float = 0;
-	public var zIndex:Float = 0;
+
 	public var hitbox:Float = 166;
 
 	public var beat:Float = 0;
@@ -82,6 +79,17 @@ class Note extends NoteGraphic
 	public static var behaviours:Map<String,NoteBehaviour>=[];
 	public static var swagWidth:Float = 160 * 0.7;
 	public var effect:NoteEffect;
+
+	// holds v2
+	public var parent:Note;
+	public var tail:Array<Note> = [];
+	public var unhitTail:Array<Note> = [];
+	public var tripTimer:Float = 1;
+	public var holdingTime:Float = 0;
+	public var segment:Float = 0;
+
+	public var causedMiss:Bool = false;
+	public var beingHeld:Bool = false;
 
 	public static var quants:Array<Int> = [
 		4, // quarter note
@@ -236,6 +244,7 @@ class Note extends NoteGraphic
 	override function update(elapsed:Float)
 	{
 		alpha = CoolUtil.scale(desiredAlpha,0,1,0,baseAlpha);
+		if(tooLate && !beingCharted)alpha*=.3;
 		super.update(elapsed);
 
 		if(isSustainNote){
@@ -249,11 +258,6 @@ class Note extends NoteGraphic
 		}
 
 		zIndex+=desiredZIndex;
-
-		/*if(holdShader!=null){
-			holdShader.update(y);
-			//holdShader.setHeight(height);
-		}*/
 
 		if (mustPress)
 		{
@@ -280,8 +284,26 @@ class Note extends NoteGraphic
 		}
 		else
 		{
-			if (strumTime <= Conductor.songPosition && !opponentMisses)
-				canBeHit = true;
+			var diff = strumTime-Conductor.songPosition;
+			if (diff<-Conductor.safeZoneOffset && !wasGoodHit)
+				tooLate=true;
+
+			if(!opponentMisses){
+
+				if(isSustainNote){
+					if (diff <= 0)
+						canBeHit = true;
+					else
+						canBeHit = false;
+				}else{
+					if (diff<=0)
+						canBeHit = true;
+					else
+						canBeHit = false;
+				}
+			}else{
+				canBeHit=false;
+			}
 		}
 
 	}

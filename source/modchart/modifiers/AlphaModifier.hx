@@ -3,6 +3,7 @@ import ui.*;
 import modchart.*;
 import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
+import math.*;
 
 class AlphaModifier extends Modifier {
   public static var fadeDistY = 120;
@@ -28,7 +29,7 @@ class AlphaModifier extends Modifier {
   }
 
   function getAlpha(yPos:Float,player:Int,note:Note){
-    var distFromCenter = yPos - modMgr.state.center.y;
+    var distFromCenter = yPos;
     var alpha:Float = 0;
 
     var time = Conductor.songPosition/1000;
@@ -60,9 +61,9 @@ class AlphaModifier extends Modifier {
     return CoolUtil.clamp(alpha+1,0,1);
   }
 
-  override function updateNote(pos:FlxPoint, scale:FlxPoint, note:Note){
+  override function updateNote(note:Note, player:Int, pos:Vector3, scale:FlxPoint){
     var player = note.mustPress==true?0:1;
-    var yPos:Float = modMgr.state.getYPosition(note,1,false)+modMgr.state.upscrollOffset;
+    var yPos:Float = (note.initialPos-Conductor.currentTrackPos)+modMgr.state.upscrollOffset;
 
 
     var alpha = getAlpha(yPos,player,note);
@@ -71,15 +72,14 @@ class AlphaModifier extends Modifier {
     var alphaMod = 1 - getSubmodPercent("alpha",player) * (1-getSubmodPercent("noteAlpha",player));
     note.desiredAlpha = ((alpha>=0.5?1:0)*alphaMod);
 
-    if(glow!=0){
-      note.effect.setFlash(glow);
-    }
+    note.effect.setFlash(glow);
+
   }
 
-  override function updateReceptor(pos:FlxPoint, scale:FlxPoint, receptor:Receptor){
-    var alpha = 1 - getSubmodPercent("alpha",receptor.playerNum);
-    if(getSubmodPercent("dark",receptor.playerNum)!=0 || getSubmodPercent('dark${receptor.direction}',receptor.playerNum)!=0){
-      alpha = alpha*(1-getSubmodPercent("dark",receptor.playerNum))*(1-getSubmodPercent('dark${receptor.direction}',receptor.playerNum));
+  override function updateReceptor(receptor:Receptor, player:Int, pos:Vector3, scale:FlxPoint){
+    var alpha = 1 - getSubmodPercent("alpha",player);
+    if(getSubmodPercent("dark",player)!=0 || getSubmodPercent('dark${receptor.direction}',player)!=0){
+      alpha = alpha*(1-getSubmodPercent("dark",player))*(1-getSubmodPercent('dark${receptor.direction}',player));
     }
     receptor.alpha = alpha;
 

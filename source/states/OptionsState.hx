@@ -59,7 +59,8 @@ class OptionsState extends MusicBeatState
 				new OptionCategory("Advanced",[
 					#if !FORCED_JUDGE new JudgementsOption("judgementWindow","Judgements","The judgement windows to use"),
 					new ToggleOption("useEpic","Use Epics","Allows the 'Epic' judgement to be used"),#end
-					new ScrollOption("accuracySystem","Accuracy System","How accuracy is determined",0,2,["Basic","ITG","Wife3"])
+					new ScrollOption("accuracySystem","Accuracy System","How accuracy is determined",0,2,["Basic","Stepmania","Wife3"]),
+					//new ToggleOption("attemptToAdjust", "Better Sync", "Attempts to sync the song position to the instrumental better by using the average offset between the\ninstrumental and the visual pos")
 				]),
 				new StateOption("Calibrate Offset",new SoundOffsetState()),
 				// TODO: make a better 'calibrate offset'
@@ -77,23 +78,24 @@ class OptionsState extends MusicBeatState
 				new ToggleOption("oldMenus","Vanilla Menus","Forces the vanilla menus to be used"),
 				new ToggleOption("oldTitle","Vanilla Title Screen","Forces the vanilla title to be used"),
 				new ToggleOption("healthBarColors","Healthbar Colours","Whether the healthbar colour changes with the character"),
-				new ToggleOption("persistentCombo","Combo doesnt fade","Combo stays on screen instead of fading out"),
 				new ToggleOption("onlyScore","Minimal Information","Only shows your score below the hp bar"),
 				new ToggleOption("smoothHPBar","Smooth Healthbar","Makes the HP Bar smoother"),
 				new ToggleOption("fcBasedComboColor","FC Combo Colouring","Makes the combo's colour changes with type of FC you have"),
+				new ToggleOption("holdsBehindReceptors","Stepmania Clipping","Makes holds clip behind the receptors"),
 				new NoteskinOption("noteSkin","NoteSkin","The noteskin to use"),
 				new OptionCategory("Effects",[
+					new ToggleOption("raymarcher","Raymarcher Shaders","Lets the camera have pitch and yaw. May cause lag"),
 					new ToggleOption("picoCamshake","Train camera shake","Whether the train in week 3's background shakes the camera"),
 					//new ToggleOption("senpaiShaders","Week 6 shaders","Is the CRT effect active in week 6"),
 					new ScrollOption("senpaiShaderStrength","Week 6 shaders","How strong the week 6 shaders are",0,2,["Off","CRT","All"])
 				]),
 			]),
 			new OptionCategory("Preferences",[
-				new ToggleOption("oldCharter","Use vanilla charter","Uses the vanilla charter instead of Andromeda's"),
 				new ToggleOption("useNotesplashes","Show NoteSplashes","Notesplashes showing up on sicks and above."),
 				new ToggleOption("camFollowsAnims","Directional Camera","Camera moving depending on a character's animations"),
 				new ToggleOption("ratingInHUD","Fixed Judgements","Fixes judgements, milliseconds and combo to the screen"),
-				new ToggleOption("smJudges","Simply Judgements","Animates judgements like ITG's Simply Love theme"),
+				new ToggleOption("ratingOverNotes","Judgements over notes","Places judgements, milliseconds and combo above the playfield"),
+				new ToggleOption("smJudges","Simply Judgements","Animates judgements and combo like ITG's Simply Love theme"),
 				new ToggleOption("pauseHoldAnims","Holds pause anims", "Whether to pause animations on their first frame"),
 				new ToggleOption("menuFlash","Flashing in menus","Whether buttons and the background should flash in menus"),
 				new ToggleOption("hitSound","Hit sounds","Play a click sound when you hit a note"),
@@ -109,6 +111,7 @@ class OptionsState extends MusicBeatState
 				new ToggleOption("ghosttapSounds","Ghost-tap hit sounds","Play a click sound when you ghost-tap"),
 				new StepOption("hitsoundVol","Hit sound volume",10,0,100,"%","","What volume the hitsound should be",true),
 				new ToggleOption("freeplayPreview","Song preview in freeplay","Whether songs get played as you hover over them in Freeplay"),
+				new ToggleOption("fastTransitions","Fast Transitions","Makes transitions between states faster"),
 				new StateOption("Judgement Position",new JudgeCustomizationState()),
 			]),
 			new OptionCategory("Performance",[
@@ -118,6 +121,7 @@ class OptionsState extends MusicBeatState
 				new ToggleOption("recycleComboJudges","Recycling","Instead of making a new sprite for each judgement and combo number, objects are reused when possible.\nMay cause layering issues."),
 				new ToggleOption("noChars","Hide characters","Hides characters ingame"),
 				new ToggleOption("noStage","Hide background","Hides stage ingame"),
+				new ToggleOption("antialiasing","Antialiasing","Toggles the ability for sprites to have antialiasing"),
 				new ToggleOption("allowOrderSorting","Sort notes by order","Allows notes to go infront and behind other notes. May cause FPS drops on very high note-density charts."),
 				new OptionCategory("Loading",[
 					new ToggleOption("shouldCache","Cache on startup","Whether the engine caches stuff when the game starts"),
@@ -141,7 +145,7 @@ class OptionsState extends MusicBeatState
 		#end
 		createDefault();
 		category=defCat;
-		var menuBG:FlxSprite = new FlxSprite().loadGraphic(Paths.image("menuBG"));
+		var menuBG:FlxSprite = new FlxSprite().loadGraphic(Paths.image("menuBGDesat"));
 
 		menuBG.color = 0xFFA271DE;
 		menuBG.setGraphicSize(Std.int(menuBG.width * 1.1));

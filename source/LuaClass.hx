@@ -8,6 +8,7 @@ import llua.State;
 import llua.LuaL;
 import flixel.util.FlxAxes;
 import flixel.FlxSprite;
+import flixel.FlxG;
 import lime.app.Application;
 import openfl.Lib;
 import sys.io.File;
@@ -23,6 +24,13 @@ import haxe.DynamicAccess;
 import openfl.display.GraphicsShader;
 import states.*;
 import ui.*;
+import llua.Macro.*;
+import openfl.display.BlendMode;
+import flixel.util.FlxColor;
+import flixel.FlxBasic;
+import flixel.group.FlxGroup.FlxTypedGroup;
+using StringTools;
+
 typedef LuaProperty = {
     var defaultValue:Any;
     var getter:(State,Any)->Int;
@@ -31,6 +39,7 @@ typedef LuaProperty = {
 
 class LuaStorage {
   public static var objectProperties:Map<String,Map<String,LuaProperty>> = [];
+  public static var conversionShit:Map<Any,LuaClass> = [];
   public static var objects:Map<String,LuaClass> = [];
   public static var notes:Array<Note> = [];
   public static var noteIDs:Map<Note,String>=[];
@@ -237,6 +246,9 @@ class LuaWindow extends LuaClass {
   }
 }
 
+// TODO: LuaSprite should 100% extend a LuaBasic class
+// which is just FlxBasic but for lua
+
 class LuaSprite extends LuaClass {
   private static var state:State;
   private static var stringToCentering:Map<String,FlxAxes> = [
@@ -245,6 +257,30 @@ class LuaSprite extends LuaClass {
     "Y"=>Y,
     "YX"=>XY
   ];
+  private static var stringToBlend:Map<String,BlendMode> = [
+    'add'=>ADD,
+		'alpha'=>ALPHA,
+		'darken'=>DARKEN,
+		'difference'=>DIFFERENCE,
+		'erase'=>ERASE,
+		'hardlight'=>HARDLIGHT,
+		'invert'=>INVERT,
+		'layer'=>LAYER,
+		'lighten'=>LIGHTEN,
+		'multiply'=>MULTIPLY,
+		'overlay'=>OVERLAY,
+		'screen'=>SCREEN,
+		'shader'=>SHADER,
+		'subtract'=>SUBTRACT,
+    'normal'=> NORMAL
+  ];
+  /*private static var stringToCamera:Map<String,FlxCamera> = [
+    'gameCam' => FlxG.camera,
+    'HUDCam' => PlayState.currentPState.camHUD,
+    'notesCam' => PlayState.currentPState.camNotes,
+    'holdCam' => PlayState.currentPState.camSus,
+    'receptorCam' => PlayState.currentPState.camReceptor
+  ];*/
   public var sprite:FlxSprite;
   private function SetNumProperty(l:State){
       // 1 = self
@@ -279,6 +315,24 @@ class LuaSprite extends LuaClass {
       return 0;
   }
 
+  private function SetAntialiasing(l:State){
+      // 1 = self
+      // 2 = key
+      // 3 = value
+      // 4 = metatable
+      if(Lua.type(l,3)!=Lua.LUA_TBOOLEAN){
+        LuaL.error(l,"invalid argument #3 (boolean expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+        return 0;
+      }
+      var value = Lua.toboolean(l,3);
+      if(OptionUtils.options.antialiasing==false)
+        value = false;
+
+      Reflect.setProperty(sprite,Lua.tostring(l,2),value);
+      return 0;
+  }
+
+
   private function GetBoolProperty(l:State,data:Any){
       // 1 = self
       // 2 = key
@@ -307,6 +361,77 @@ class LuaSprite extends LuaClass {
   }
 
   private static var setScaleC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(setScale);
+
+  private static function setBlendMode(l:StatePointer)
+  {
+    // 1 = self
+    // 2 = blendMode string
+    var blendMode = LuaL.checkstring(state, 2);
+    Lua.getfield(state,1,"spriteName");
+    var spriteName = Lua.tostring(state,-1);
+    var sprite = PlayState.currentPState.luaSprites[spriteName];
+    if (stringToBlend[blendMode.toLowerCase().trim()] != null)
+    sprite.blend = stringToBlend[blendMode];
+    //trace('blend mode set to $blendMode');
+    /*
+
+    switch(Lua.tostring(state,2).toLowerCase().trim)
+    {
+      case 'add':sprite.blend = ADD;
+			case 'alpha': sprite.blend = ALPHA;
+			case 'darken': sprite.blend = DARKEN;
+			case 'difference': sprite.blend = DIFFERENCE;
+			case 'erase': sprite.blend = ERASE;
+			case 'hardlight': sprite.blend =  HARDLIGHT;
+			case 'invert': sprite.blend = INVERT;
+			case 'layer': sprite.blend = LAYER;
+			case 'lighten': sprite.blend = LIGHTEN;
+			case 'multiply': sprite.blend = MULTIPLY;
+			case 'overlay': sprite.blend = OVERLAY;
+			case 'screen': sprite.blend = SCREEN;
+			case 'shader': sprite.blend = SHADER;
+			case 'subtract': sprite.blend = SUBTRACT;
+      default: sprite.blend = NORMAL;
+    }*/
+
+    return 0;
+  }
+
+  private static var setBlendModeC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(setBlendMode);
+
+  private static function setCameras(l:StatePointer){
+    // 1 = self
+    // 2 = array of cameras
+
+    try{
+
+      LuaL.checktable(state,2);
+      var cameras:Array<FlxCamera> = [];
+
+      Lua.pushnil(state);
+
+      while(Lua.next(state, -2) != 0) {
+        Lua.getfield(state,-1,"className");
+        var name = Lua.tostring(state,-1);
+        var cam = PlayState.currentPState.luaObjects[name];
+        if(cam!=null){
+          cameras.push(cam);
+        }
+        Lua.pop(state, 2); // pops the classname, aswell
+      }
+      Lua.pop(state,1); // pops the key, probably
+
+      Lua.getfield(state,1,"spriteName");
+      var spriteName = Lua.tostring(state,-1);
+      var sprite: FlxSprite = PlayState.currentPState.luaSprites[spriteName];
+      Reflect.setProperty(sprite,"cameras",cameras); // why is haxeflixel so fucking weird
+    }catch(e){
+      trace(e.stack,e.message);
+    }
+    return 0;
+  }
+
+  private static var setCamerasC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(setCameras);
 
   private static function setScaleX(l:StatePointer):Int{
     // 1 = self
@@ -426,17 +551,17 @@ class LuaSprite extends LuaClass {
     var flipX:Bool = false;
     var flipY:Bool = false;
 
-    if(Lua.isnumber(state,4))
-      framerate = Lua.tonumber(state,4);
-
-    if(Lua.isboolean(state,5))
-      looped = Lua.toboolean(state,5);
+    if(Lua.isnumber(state,5))
+      framerate = Lua.tonumber(state,5);
 
     if(Lua.isboolean(state,6))
       looped = Lua.toboolean(state,6);
 
     if(Lua.isboolean(state,7))
-      flipY = Lua.toboolean(state,7);
+      flipX = Lua.toboolean(state,7);
+
+    if(Lua.isboolean(state,8))
+      flipY = Lua.toboolean(state,8);
 
     Lua.getfield(state,1,"spriteName");
     var spriteName = Lua.tostring(state,-1);
@@ -477,7 +602,8 @@ class LuaSprite extends LuaClass {
       return 0;
     }
     sprite.loadGraphic(data,animated,0,0,false,spriteName);
-    return 0;
+    Lua.pushvalue(state,1);
+    return 1;
   }
 
   private static function setFrames(l:StatePointer){
@@ -542,6 +668,35 @@ class LuaSprite extends LuaClass {
     return 2;
   }
 
+  private static function makeGraphic(l:StatePointer):Int{
+    // 1 = self
+    // 2 = width
+    // 3 = height
+    // 4 = color
+    // 5 = unique
+    // 6 = key
+    var width:Int = Std.int(LuaL.checknumber(state,2));
+    var height:Int = Std.int(LuaL.checknumber(state,3));
+    var color:FlxColor = FlxColor.WHITE;
+    var unique:Bool = false;
+    var key:Null<String> = '';
+    if(Lua.isnumber(state,4))
+      color=FlxColor.fromInt(Std.int(Lua.tonumber(state,4)));
+    if(Lua.isboolean(state,5))
+      unique=Lua.toboolean(state,5);
+    if(Lua.isstring(state,6))
+      key=Lua.tostring(state,6);
+
+
+    Lua.getfield(state,1,"spriteName");
+    var spriteName = Lua.tostring(state,-1);
+    var sprite = PlayState.currentPState.luaSprites[spriteName];
+    sprite.makeGraphic(width,height,color,unique,key);
+
+    Lua.pushvalue(state,1);
+    return 1;
+  }
+
   private static function playAnimSprite(l:StatePointer):Int{
     // 1 = self
     // 2 = anim
@@ -589,6 +744,79 @@ class LuaSprite extends LuaClass {
 
   }
 
+  private static function tweenColor(l:StatePointer):Int{
+    // 1 = self
+    // 2 = startColour
+    // 3 = endColour
+    // 4 = time
+    // 5 = easing-style
+    var startColour:FlxColor = cast LuaL.checknumber(state,2);
+    var endColour:FlxColor = cast LuaL.checknumber(state,3);
+    var time = LuaL.checknumber(state,4);
+    var style = LuaL.checkstring(state,5);
+    Lua.getfield(state,1,"spriteName");
+    var spriteName = Lua.tostring(state,-1);
+    var sprite = PlayState.currentPState.luaSprites[spriteName];
+    var luaObj = LuaStorage.objects[spriteName];
+    /*FlxTween.tween(sprite,properties,time,{
+      ease: Reflect.field(FlxEase,style),
+    });*/
+    FlxTween.color(sprite, time, FlxColor.fromInt(startColour), FlxColor.fromInt(endColour), {
+      ease: Reflect.field(FlxEase,style),
+    });
+    return 1;
+
+  }
+
+  private static function changeLayer(l:StatePointer):Int{
+    // 1 = self
+    // 2 = newLayer
+    var layer = LuaL.checkstring(state,2);
+    Lua.getfield(state,1,"spriteName");
+    var spriteName = Lua.tostring(state,-1);
+    var sprite = PlayState.currentPState.luaSprites[spriteName];
+    var state = PlayState.currentPState;
+    var stage = state.stage;
+    var layers:Array<String> = ["boyfriend","gf","dad"];
+    if(stage.members.contains(sprite)){
+      stage.remove(sprite);
+    }
+
+    if(state.members.contains(sprite)){
+      state.remove(sprite);
+    }
+
+    if(stage.foreground.members.contains(sprite)){
+      stage.foreground.remove(sprite);
+    }
+
+    if(stage.overlay.members.contains(sprite)){
+      stage.overlay.remove(sprite);
+    }
+
+    for(shit in layers){
+      if(stage.layers.get(shit).members.contains(sprite)){
+        stage.layers.get(shit).remove(sprite);
+      }
+    }
+
+    switch(layer){
+      case 'dad' | 'boyfriend' | 'gf':
+        stage.layers.get(layer).add(sprite);
+      case 'foreground':
+        stage.foreground.add(sprite);
+      case 'overlay':
+        stage.overlay.add(sprite);
+      case 'stage':
+        stage.add(sprite);
+      default:
+        state.add(sprite);
+    }
+
+    return 0;
+
+  }
+
   private static var changeAnimFramerateC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(changeAnimFramerate);
   private static var animExistsC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(animExists);
   private static var addSpriteAnimByPrefixC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(addSpriteAnimByPrefix);
@@ -598,7 +826,20 @@ class LuaSprite extends LuaClass {
   private static var loadGraphicC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(loadGraphic);
   private static var setFramesC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(setFrames);
   private static var playAnimSpriteC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(playAnimSprite);
+  private static var makeGraphicC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(makeGraphic);
   private static var tweenC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(tween);
+  private static var tweenColorC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(tweenColor);
+  private static var changeLayerC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(changeLayer);
+
+  function getClassnameByObj(obj: FlxBasic){
+    var objects = PlayState.currentPState.luaObjects;
+    for(key in objects.keys()){
+      if(objects.get(key)==obj){
+        return key;
+      }
+    }
+    return null;
+  }
 
   public function new(sprite:FlxSprite,name:String,?addToGlobal:Bool=true){
     super();
@@ -667,7 +908,7 @@ class LuaSprite extends LuaClass {
       "antialiasing"=>{
         defaultValue:sprite.antialiasing,
         getter:GetBoolProperty,
-        setter:SetBoolProperty
+        setter:SetAntialiasing
       },
       "active"=>{
         defaultValue:sprite.active,
@@ -693,6 +934,28 @@ class LuaSprite extends LuaClass {
         },
         setter:function(l:State){
           LuaL.error(l,"tween is read-only.");
+          return 0;
+        }
+      },
+      "tweenColor"=>{
+        defaultValue:0,
+        getter:function(l:State,data:Any){
+          Lua.pushcfunction(l,tweenColorC);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"tweenColor is read-only.");
+          return 0;
+        }
+      },
+      "changeLayer"=>{
+        defaultValue:0,
+        getter:function(l:State,data:Any){
+          Lua.pushcfunction(l,changeLayerC);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"changeLayer is read-only.");
           return 0;
         }
       },
@@ -740,6 +1003,17 @@ class LuaSprite extends LuaClass {
           return 0;
         }
       },
+      "makeGraphic"=>{
+        defaultValue:0,
+        getter:function(l:State,data:Any){
+          Lua.pushcfunction(l,makeGraphicC);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"makeGraphic is read-only.");
+          return 0;
+        }
+      },
       "setFrames"=>{
         defaultValue:0,
         getter:function(l:State,data:Any){
@@ -748,6 +1022,17 @@ class LuaSprite extends LuaClass {
         },
         setter:function(l:State){
           LuaL.error(l,"setFrames is read-only.");
+          return 0;
+        }
+      },
+      "setBlendMode"=>{
+        defaultValue:0,
+        getter:function(l:State,data:Any){
+          Lua.pushcfunction(l,setBlendModeC);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"setBlendMode is read-only.");
           return 0;
         }
       },
@@ -806,6 +1091,91 @@ class LuaSprite extends LuaClass {
           return 0;
         }
       },
+
+      /*"setCameras"=>{
+        defaultValue:0,
+        getter:function(l:State,data:Any){
+          Lua.pushcfunction(l,setCamerasC);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"setCameras is read-only.");
+          return 0;
+        }
+      },*/
+
+      "cameras"=>{
+        defaultValue: [],
+        getter: function(l:State, data:Any){
+          var classnames:Array<String> = [];
+          for(camera in sprite.cameras){
+            var luaClass = getClassnameByObj(camera);
+            if(luaClass!=null){
+              classnames.push(luaClass);
+            }
+          }
+          Lua.newtable(l);
+          var tableIdx = Lua.gettop(l);
+
+          Lua.getglobal(l, "cameras");
+          var idx:Int = 0;
+          for(name in classnames){
+            Lua.getfield(l, -1, name);
+            if(Lua.isnil(l,-1)==0){
+              idx++;
+              Lua.rawseti(l, tableIdx, idx);
+            }
+          }
+
+          Lua.pushvalue(l,tableIdx);
+
+          return 1;
+        },
+
+        setter: function(l:State){
+          Lua.pop(l,1); // remove the metatable from the end since its entirely un-needed
+          // 1 = self
+          // 2 = index 'cameras'
+          // 3 = array of cameras
+          try{
+
+            if(Lua.type(l,3)!=Lua.LUA_TTABLE){
+              LuaL.error(l,"invalid argument #3 (table expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+              return 0;
+            }
+            var cameras:Array<FlxCamera> = [];
+
+            // -1 = array
+            // -2 = index
+            // -3 = self
+
+            Lua.pushnil(l);
+
+            // -1 = nil
+            // -2 = array
+            // -3 = index
+            // -4 = self
+            while(Lua.next(l, -2) != 0) {
+              Lua.getfield(l,-1,"className");
+              var name = Lua.tostring(l,-1);
+              var cam = PlayState.currentPState.luaObjects[name];
+              if(cam!=null){
+                cameras.push(cam);
+              }
+              Lua.pop(l, 2); // pops the classname, aswell
+            }
+            Lua.pop(l,1); // pops the key, probably
+
+            Reflect.setProperty(sprite,"cameras",cameras); // why is haxeflixel so fucking weird
+          }catch(e){
+            trace(e.stack,e.message);
+          }
+
+          return 0;
+        }
+      },
+
+
       "scrollFactorX"=>{ // TODO: sprite.scrollFactor.x
         defaultValue:sprite.scrollFactor.x,
         getter:function(l:State,data:Any){
@@ -954,6 +1324,22 @@ class LuaCam extends LuaClass {
     return 0;
   }
 
+  private static function setScale(l:StatePointer):Int{
+    // 1 = self
+    // 2 = X
+    // 3 = Y
+    var scaleX:String = LuaL.checkstring(state,2);
+    var scaleY:Float = LuaL.checknumber(state,3);
+    Lua.getfield(state,1,"className");
+    var objName = Lua.tostring(state,-1);
+    var cam = PlayState.currentPState.luaObjects[objName];
+
+    cam.setScale(scaleX,scaleY);
+
+
+    return 0;
+  }
+
   private static function addShaders(l:StatePointer):Int{
     // 1 = self
     // 2 = table of shaders
@@ -971,7 +1357,25 @@ class LuaCam extends LuaClass {
   }
 
   private static var shakeC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(shake);
+  private static var setScaleC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(setScale);
   private static var addShadersC:cpp.Callable<StatePointer->Int> = cpp.Callable.fromStaticFunction(addShaders);
+
+  private function SetAntialiasing(l:State){
+      // 1 = self
+      // 2 = key
+      // 3 = value
+      // 4 = metatable
+      if(Lua.type(l,3)!=Lua.LUA_TBOOLEAN){
+        LuaL.error(l,"invalid argument #3 (boolean expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+        return 0;
+      }
+      var value = Lua.toboolean(l,3);
+      if(OptionUtils.options.antialiasing==false)
+        value = false;
+
+      Reflect.setProperty(camera,Lua.tostring(l,2),value);
+      return 0;
+  }
 
   public function new(cam:FlxCamera,name:String,?addToGlobal:Bool=true){
     super();
@@ -1029,7 +1433,7 @@ class LuaCam extends LuaClass {
       "antialiasing"=>{
         defaultValue:cam.antialiasing,
         getter:GetBoolProperty,
-        setter:SetBoolProperty
+        setter:SetAntialiasing
       },
       "filtersEnabled"=>{
         defaultValue:cam.filtersEnabled,
@@ -1047,28 +1451,66 @@ class LuaCam extends LuaClass {
           return 0;
         }
       },
-      "addShaders"=>{
+      "setScale"=>{
         defaultValue:0,
         getter:function(l:State,data:Any){
-          Lua.pushcfunction(l,addShadersC);
+          Lua.pushcfunction(l,setScaleC);
           return 1;
         },
         setter:function(l:State){
-          LuaL.error(l,"addShaders is read-only.");
+          LuaL.error(l,"setScale is read-only.");
           return 0;
         }
-      },
+      }
     ];
   }
   override function Register(l:State){
     state=l;
+    var classIdx = Lua.gettop(l)+1;
     super.Register(l);
+    Lua.getglobal(l,"cameras");
+    if(Lua.isnil(l,-1)==1){
+      Lua.pop(l,1);
+      Lua.newtable(l);
+      Lua.setglobal(l,"cameras");
+    }
+    var tableIdx = Lua.gettop(l);
+
+    Lua.pushstring(l, className);
+    Lua.pushvalue(l, classIdx);
+    Lua.settable(l, tableIdx);
+  }
+}
+
+class LuaHPBar extends LuaSprite {
+  private static var state:State;
+
+  override function Register(l:State){
+    state=l;
+    super.Register(l);
+  }
+  public function new(bar:Healthbar,name:String,?addToGlobal:Bool=true){
+    super(bar,name,addToGlobal);
+
+    properties.set("smooth",{
+      defaultValue:bar.smooth,
+      getter:GetBoolProperty,
+      setter:SetBoolProperty
+    });
+    properties.set("value",{
+      defaultValue:bar.value,
+      getter:GetNumProperty,
+      setter:SetNumProperty
+    });
+
+
   }
 }
 
 class LuaNote extends LuaSprite {
   private static var state:State;
   public var id:String='0';
+
 
   override function Register(l:State){
     state=l;
@@ -1190,6 +1632,202 @@ class LuaNote extends LuaSprite {
       }
     });
 
+
+  }
+}
+
+class LuaGroup<T:FlxBasic> extends LuaClass {
+  private static var state:State;
+  public var group:FlxTypedGroup<T>;
+  private function SetNumProperty(l:State){
+      // 1 = self
+      // 2 = key
+      // 3 = value
+      // 4 = metatable
+      if(Lua.type(l,3)!=Lua.LUA_TNUMBER){
+        LuaL.error(l,"invalid argument #3 (number expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+        return 0;
+      }
+      Reflect.setProperty(group,Lua.tostring(l,2),Lua.tonumber(l,3));
+      return 0;
+  }
+
+  private function GetNumProperty(l:State,data:Any){
+      // 1 = self
+      // 2 = key
+      // 3 = metatable
+      Lua.pushnumber(l,Reflect.getProperty(group,Lua.tostring(l,2)));
+      return 1;
+  }
+
+  private function SetBoolProperty(l:State){
+      // 1 = self
+      // 2 = key
+      // 3 = value
+      // 4 = metatable
+      if(Lua.type(l,3)!=Lua.LUA_TBOOLEAN){
+        LuaL.error(l,"invalid argument #3 (boolean expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+        return 0;
+      }
+      Reflect.setProperty(group,Lua.tostring(l,2),Lua.toboolean(l,3));
+      return 0;
+  }
+
+  private function GetBoolProperty(l:State,data:Any){
+      // 1 = self
+      // 2 = key
+      // 3 = metatable
+      Lua.pushboolean(l,Reflect.getProperty(group,Lua.tostring(l,2)));
+      return 1;
+  }
+
+  private function GetStringProperty(l:State,data:Any){
+      // 1 = self
+      // 2 = key
+      // 3 = metatable
+      Lua.pushstring(l,Reflect.getProperty(group,Lua.tostring(l,2)));
+      return 1;
+  }
+
+  function getClassnameByObj(obj: FlxBasic){
+    var objects = PlayState.currentPState.luaObjects;
+    for(key in objects.keys()){
+      if(objects.get(key)==obj){
+        return key;
+      }
+    }
+    return null;
+  }
+
+  override function Register(l:State){
+    state=l;
+    super.Register(l);
+  }
+
+  public function new(group:FlxTypedGroup<T>,name:String,?addToGlobal:Bool=true){
+    super();
+    className=name;
+    this.addToGlobal=addToGlobal;
+    this.group=group;
+    PlayState.currentPState.luaObjects[name]=group;
+    LuaStorage.objects[name]=this;
+
+    properties = [
+      "className"=>{
+        defaultValue:name,
+        getter:function(l:State,data:Any){
+          Lua.pushstring(l,name);
+          return 1;
+        },
+        setter:function(l:State){
+          LuaL.error(l,"className is read-only.");
+          return 0;
+        }
+      },
+      "length"=>{
+        defaultValue:group.length,
+        getter:GetNumProperty,
+        setter:function(l:State){
+          LuaL.error(l,"length is read-only.");
+          return 0;
+        }
+      },
+      "maxSize"=>{
+        defaultValue:group.maxSize,
+        getter:GetNumProperty,
+        setter:SetNumProperty
+      },
+      "alive"=>{
+        defaultValue:group.alive,
+        getter:GetBoolProperty,
+        setter:SetBoolProperty
+      },
+      "active"=>{
+        defaultValue:group.active,
+        getter:GetBoolProperty,
+        setter:SetBoolProperty
+      },
+      "exists"=>{
+        defaultValue:group.exists,
+        getter:GetBoolProperty,
+        setter:SetBoolProperty
+      },
+      "visible"=>{
+        defaultValue:group.visible,
+        getter:GetBoolProperty,
+        setter:SetBoolProperty
+      },
+      "cameras"=>{
+        defaultValue: [],
+        getter: function(l:State, data:Any){
+          var classnames:Array<String> = [];
+          for(camera in group.cameras){
+            var luaClass = getClassnameByObj(camera);
+            if(luaClass!=null){
+              classnames.push(luaClass);
+            }
+          }
+          Lua.newtable(l);
+          var tableIdx = Lua.gettop(l);
+
+          Lua.getglobal(l, "cameras");
+          var idx:Int = 0;
+          for(name in classnames){
+            Lua.getfield(l, -1, name);
+            if(Lua.isnil(l,-1)==0){
+              idx++;
+              Lua.rawseti(l, tableIdx, idx);
+            }
+          }
+
+          Lua.pushvalue(l,tableIdx);
+
+          return 1;
+        },
+
+        setter: function(l:State){
+          Lua.pop(l,1); // remove the metatable from the end since its entirely un-needed
+          // 1 = self
+          // 2 = index 'cameras'
+          // 3 = array of cameras
+          try{
+
+            if(Lua.type(l,3)!=Lua.LUA_TTABLE){
+              LuaL.error(l,"invalid argument #3 (table expected, got " + Lua.typename(l,Lua.type(l,3)) + ")");
+              return 0;
+            }
+            var cameras:Array<FlxCamera> = [];
+
+            // -1 = array
+            // -2 = index
+            // -3 = self
+
+            Lua.pushnil(l);
+
+            // -1 = nil
+            // -2 = array
+            // -3 = index
+            // -4 = self
+            while(Lua.next(l, -2) != 0) {
+              Lua.getfield(l,-1,"className");
+              var name = Lua.tostring(l,-1);
+              var cam = PlayState.currentPState.luaObjects[name];
+              if(cam!=null){
+                cameras.push(cam);
+              }
+              Lua.pop(l, 2); // pops the classname, aswell
+            }
+            Lua.pop(l,1); // pops the key, probably
+
+            Reflect.setProperty(group,"cameras",cameras); // why is haxeflixel so fucking weird
+          }catch(e){
+            trace(e.stack,e.message);
+          }
+
+          return 0;
+        }
+      },
+    ];
 
   }
 }
@@ -1486,6 +2124,8 @@ class LuaShaderClass extends LuaClass {
     Lua.getfield(state,1,"className");
     var name = Lua.tostring(state,-1);
     var shader = PlayState.currentPState.luaObjects[name];
+    var parameter = Reflect.getProperty(shader,property);
+    Convert.toLua(state,Reflect.getProperty(parameter,"value"));
     //Convert.toLua(state,Reflect.getProperty(shader,property));
     return 1;
   }
@@ -1499,6 +2139,8 @@ class LuaShaderClass extends LuaClass {
     Lua.getfield(state,1,"className");
     var name = Lua.tostring(state,-1);
     var shader = PlayState.currentPState.luaObjects[name];
+    var parameter = Reflect.getProperty(shader,property);
+    Reflect.setProperty(parameter,"value",value);
     //Reflect.setProperty(shader,property,value);
 
     return 1;
@@ -1722,6 +2364,7 @@ class LuaModMgr extends LuaClass {
     try{
       mgr.queueEase(step,eStep,modN,perc,ease,player);
     }catch(e){
+      trace(step, eStep, modN, perc, ease, player);
       trace(e.stack,e.message);
     }
     return 0;

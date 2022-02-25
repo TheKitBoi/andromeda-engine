@@ -23,7 +23,9 @@ Andromeda Engine includes but is not limited to:
 ## Credits / shoutouts
 - [Nebula the Zorua](https://twitter.com/Nebula_Zorua) - Most engine stuff
 - [TKTems](https://twitter.com/TKTems) - Menu stuff
-- [4mbr0s3 2](https://www.youtube.com/channel/UCez-Erpr0oqmC71vnDrM9yA) - Implementation concept for new modifier stuff and inspiration to even BOTHER working on it
+- [4mbr0s3 2](https://www.youtube.com/channel/UCez-Erpr0oqmC71vnDrM9yA) - Implementation concept for new modifier stuff and inspiration to even BOTHER working on it, also some code and math shit. Cool dude!!
+- [Zenokwei / ILuvGemz](https://twitter.com/gemz_luv) - Lots of useful PRs and reporting and fixing bugs
+- [FreestyleDev](https://twitter.com/Rapper_GF_Dev) - Music sync stuff
 - [kevinresol](https://github.com/kevinresol) - Original hxvm-lua
 - [AndreiDudenko](https://github.com/AndreiRudenko) - Original linc_luajit
 - [Echolocated](https://twitter.com/CH_echolocated) - "Epic" judgement rating and spreading the word about the engine
@@ -35,14 +37,14 @@ Andromeda Engine includes but is not limited to:
 - [SrPerez](https://twitter.com/NewSrPerez) - Some math to do with receptors in KE
 - [Kade Engine](https://github.com/KadeDev/Kade-Engine) - SrPerez's math for receptors, caching loading screen stuff
 - [bbpanzu](https://twitter.com/bbsub3) - Bringing issues to my attention & letting more people know about AE
+- [Wilde](https://twitter.com/0WildeRaze) - Keepin' me sane and letting more people know about AE. Love ya, honey!
+- [Lizzy](https://twitter.com/tc_lizzy) - Keepin' me sane
 - [Berdly the Antagonist](https://twitter.com/mylimit666) - Beat snap math
 - [Redsty Phoenix](https://twitter.com/RedstyP) - REALLY getting the word out
-- Codist - Dialogue format
-- [Yoshubs](https://twitter.com/yoshubs) - Cache dumping, inspiring me to optimize and improve input (and soon dialogue format).
+- [Yoshubs](https://twitter.com/yoshubs) - Cache dumping, inspiring me to optimize and improve input
 - [Shadow Mario](https://twitter.com/Shadow_Mario_) - Inspiration, Psych Engine character format
 - [Psych Engine](https://github.com/ShadowMario/FNF-PsychEngine) - Read Shadow Mario's credit
 - [gedehari](https://twitter.com/gedehari) - Inspiration
-- [Lizzy](https://twitter.com/tc_lizzy) - Keepin' me sane. Love ya, hunny!
 - [BigWIngs](https://www.shadertoy.com/user/BigWIngs) - Raymarcher shader (https://www.shadertoy.com/view/WtGXDD)
 - [ryk](https://www.shadertoy.com/user/ryk) - VCR Distortion shader (https://www.shadertoy.com/view/ldjGzV)
 - [Mattias](https://www.shadertoy.com/user/Mattias) - CRT shader in VCR Distortion (https://www.shadertoy.com/view/Ms23DR)
@@ -110,25 +112,13 @@ At the moment, you can optionally fix the transition bug in songs with zoomed ou
 
 ### Compiling game
 
-Once you have all those installed, it's pretty easy to compile the game. You just need to run 'lime test html5 -debug' in the root of the project to build and run the HTML5 version. (command prompt navigation guide can be found here: [https://ninjamuffin99.newgrounds.com/news/post/1090480](https://ninjamuffin99.newgrounds.com/news/post/1090480))
-
-To run it from your desktop (Windows, Mac, Linux) it can be a bit more involved. For Linux, you only need to open a terminal in the project directory and run 'lime test linux -debug' and then run the executible file in export/release/linux/bin. For Windows, you need to install Visual Studio Community 2019. While installing VSC, don't click on any of the options to install workloads. Instead, go to the individual components tab and choose the following:
+Once you have all those installed, it's pretty easy to compile the game. You just need to run `lime test html5 -debug` in the root of the project to build and run the HTML5 version. (command prompt navigation guide can be found here: [https://ninjamuffin99.newgrounds.com/news/post/1090480](https://ninjamuffin99.newgrounds.com/news/post/1090480))
+To run it from your desktop (Windows, Mac, Linux) it can be a bit more involved. For Linux, you only need to open a terminal in the project directory and run `lime test linux -debug` and then run the executable file in export/release/linux/bin. For Windows, you need to install Visual Studio Community 2019. While installing VSC, don't click on any of the options to install workloads. Instead, go to the individual components tab and choose the following:
 * MSVC v142 - VS 2019 C++ x64/x86 build tools
 * Windows SDK (10.0.17763.0)
-* C++ Profiling tools
-* C++ CMake tools for windows
-* C++ ATL for v142 build tools (x86 & x64)
-* C++ MFC for v142 build tools (x86 & x64)
-* C++/CLI support for v142 build tools (14.21)
-* C++ Modules for v142 build tools (x64/x86)
-* Clang Compiler for Windows
-* Windows 10 SDK (10.0.17134.0)
-* Windows 10 SDK (10.0.16299.0)
-* MSVC v141 - VS 2017 C++ x64/x86 build tools
-* MSVC v140 - VS 2015 C++ build tools (v14.00)
 
-This will install about 22GB of crap, but once that is done you can open up a command line in the project's directory and run `lime test windows -debug`. Once that command finishes (it takes forever even on a higher end PC), you can run FNF from the .exe file under export\release\windows\bin
-Right now, compiling for Mac does not work.
+Once that is done you can open up a command line in the project's directory and run `lime test windows -debug`. Once that command finishes (it takes forever even on a higher end PC), you can run FNF from the .exe file under export\release\windows\bin
+As for Mac, 'lime test mac -debug' should work, if not the internet surely has a guide on how to compile Haxe stuff for Mac.
 
 If you get an error about StatePointer, you'll want to run these:
 ```

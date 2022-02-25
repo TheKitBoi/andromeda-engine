@@ -4,6 +4,7 @@ import modchart.*;
 import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
 import flixel.FlxCamera;
+import math.*;
 
 class CamModifier extends Modifier {
   var prefix:String = "game";
@@ -35,7 +36,6 @@ class CamModifier extends Modifier {
 
     var xScrollOffset = (getSubmodPercent(prefix + "ScrollXOffset",0))*100;
     var yScrollOffset = (getSubmodPercent(prefix + "ScrollYOffset",0))*100;
-
     for(camera in cams){
       var cam:FNFCamera = camera;
       cam.pitch = pitch;

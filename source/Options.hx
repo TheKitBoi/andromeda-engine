@@ -100,7 +100,7 @@ class Options
 	public var loadModcharts:Bool = true;
 	public var noFail:Bool = false;
 	public var useEpic:Bool = true;
-
+	public var attemptToAdjust:Bool = false;
 	// appearance
 	public var useNotesplashes:Bool = true;
 	public var allowNoteModifiers:Bool = true;
@@ -116,11 +116,12 @@ class Options
 	public var showCounters:Bool = true;
 	public var staticCam:Int = 0;
 	public var noteSkin:String = 'default';
-	public var persistentCombo:Bool = false;
 	public var smJudges:Bool = false;
 	public var judgeX:Float = 0;
 	public var judgeY:Float = 0;
 	public var fcBasedComboColor:Bool = false;
+	public var holdsBehindReceptors:Bool = false;
+	public var fastTransitions:Bool = false;
 
 	// performance
 	public var fps:Int = 120;
@@ -128,15 +129,15 @@ class Options
 	public var noStage:Bool = false;
 	public var allowOrderSorting:Bool = true;
 	public var recycleComboJudges:Bool = false;
+	public var antialiasing:Bool = true;
 	public var shouldCache:Bool = false;
 	public var cacheCharacters:Bool = false;
 	public var cacheSongs:Bool = false;
 	public var cacheSounds:Bool = false;
 	public var cachePreload:Bool = false;
 	public var cacheUsedImages:Bool = false;
-
+	public var raymarcher:Bool = true;
 	// preference
-	public var oldCharter:Bool = false;
 	public var showMem:Bool = true;
 	public var showMemPeak:Bool = true;
 	public var showFPS:Bool = false;
@@ -149,6 +150,7 @@ class Options
 	public var ghosttapSounds:Bool = false;
 	public var hitsoundVol:Float = 50;
 	public var ratingInHUD:Bool = false;
+	public var ratingOverNotes:Bool = false;
 	public var menuFlash:Bool = true;
 	public var freeplayPreview:Bool = false;
 	public var hitSound:Bool = false;
